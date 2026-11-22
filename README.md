@@ -32,6 +32,12 @@ npx prisma migrate deploy
 - `POST /api/v1/auth/login` — sign in with email or phone
 - `POST /api/v1/stores` — create a free seller store (Bearer token required); defaults to IRR for Iran and USD elsewhere
 - `GET /api/v1/stores/me` — retrieve the signed-in seller's store
+- `POST /api/v1/listings` — create a product draft for the signed-in seller's store (Bearer token required)
+- `GET /api/v1/listings/mine` — list the signed-in seller's products (Bearer token required)
+- `GET /api/v1/listings` — search active products; optional `q`, `category`, and `countryCode` query parameters
+- `PATCH /api/v1/listings/:id/archive` — archive one of the seller's own products (Bearer token required)
+
+New products start as drafts and are not publicly searchable until a later publishing/moderation flow activates them.
 
 ## Payments and seller commission
 - Platform commission is configured as **0.5% (50 basis points)** by default.
