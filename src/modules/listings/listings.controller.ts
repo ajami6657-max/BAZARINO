@@ -30,6 +30,12 @@ export class ListingsController {
     return this.listings.mine(request.user.id);
   }
 
+  @Patch(':id/publish')
+  @UseGuards(AuthTokenGuard)
+  publish(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.listings.publish(request.user.id, id);
+  }
+
   @Patch(':id/archive')
   @UseGuards(AuthTokenGuard)
   archive(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
