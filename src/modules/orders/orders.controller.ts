@@ -1,27 +1,40 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthTokenGuard } from '../stores/auth-token.guard';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
 
 type AuthenticatedRequest = { user: { id: string; role: string } };
 
-@Controller('orders')
+@Controller()
 @UseGuards(AuthTokenGuard)
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
-  @Post()
-  create(@Req() request: AuthenticatedRequest, @Body() dto: CreateOrderDto) {
-    return this.orders.create(request.user.id, dto);
-  }
+  @Get('cart')
+  cart(@Req() request: AuthenticatedRequest) { return this.orders.cart(request.user.id); }
 
-  @Get('mine')
-  mine(@Req() request: AuthenticatedRequest) {
-    return this.orders.mine(request.user.id);
-  }
+  @Post('cart/items')
+  addToCart(@Req() request: AuthenticatedRequest, @Body() dto: AddCartItemDto) { return this.orders.addToCart(request.user.id, dto); }
 
-  @Get('seller')
-  sellerOrders(@Req() request: AuthenticatedRequest) {
-    return this.orders.sellerOrders(request.user.id);
-  }
+  @Delete('cart/items/:listingId')
+  removeFromCart(@Req() request: AuthenticatedRequest, @Param('listingId') listingId: string) { return this.orders.removeFromCart(request.user.id, listingId); }
+
+  @Post('cart/checkout')
+  checkoutCart(@Req() request: AuthenticatedRequest) { return this.orders.checkoutCart(request.user.id); }
+
+  @Post('orders')
+  create(@Req() request: AuthenticatedRequest, @Body() dto: CreateOrderDto) { return this.orders.create(request.user.id, dto); }
+
+  @Get('orders/mine')
+  mine(@Req() request: AuthenticatedRequest) { return this.orders.mine(request.user.id); }
+
+  @Get('orders/seller')
+  sellerOrders(@Req() request: AuthenticatedRequest) { return this.orders.sellerOrders(request.user.id); }
+
+  @Post('orders/:id/cancel')
+  cancel(@Req() request: AuthenticatedRequest, @Param('id') id: string) { return this.orders.cancel(request.user.id, id); }
+
+  @Post('orders/:id/fulfill')
+  fulfill(@Req() request: AuthenticatedRequest, @Param('id') id: string) { return this.orders.fulfill(request.user.id, id); }
 }
