@@ -34,6 +34,16 @@ export class AuthService {
     return this.jwt.signAsync({ sub: user.id, role: user.role });
   }
 
+  async verifyAccessToken(token: string): Promise<{ sub: string; role: string }> {
+    try {
+      const payload = await this.jwt.verifyAsync<{ sub: string; role: string }>(token);
+      if (!payload.sub) throw new UnauthorizedException('Invalid access token');
+      return payload;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired access token');
+    }
+  }
+
   async register(dto: RegisterDto) {
     const email = dto.email?.trim().toLowerCase();
     const phone = dto.phone?.trim();
