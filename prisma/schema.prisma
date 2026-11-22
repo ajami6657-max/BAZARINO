@@ -20,6 +20,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   listings     Listing[]
+  buyerOrders  Order[] @relation("OrderBuyer")
+  sellerOrders Order[] @relation("OrderSeller")
   store        Store?
   buyerPayments Payment[] @relation("PaymentBuyer")
   sellerPayments Payment[] @relation("PaymentSeller")
@@ -55,18 +57,24 @@ model Listing {
   seller      User @relation(fields: [sellerId], references: [id])
   store       Store? @relation(fields: [storeId], references: [id])
   @@index([countryCode, category, status])
+  orders      Order[]
   @@index([currency, price])
 }
 model Order {
   id          String @id @default(uuid())
   buyerId     String
   sellerId    String
+  listingId   String
+  quantity    Int @default(1)
   countryCode String
   currency    String
   subtotal    Decimal @db.Decimal(18, 4)
   status      OrderStatus @default(PENDING)
   createdAt   DateTime @default(now())
   payment     Payment?
+  buyer       User @relation("OrderBuyer", fields: [buyerId], references: [id])
+  seller      User @relation("OrderSeller", fields: [sellerId], references: [id])
+  listing     Listing @relation(fields: [listingId], references: [id])
   @@index([buyerId, createdAt])
   @@index([sellerId, createdAt])
 }
