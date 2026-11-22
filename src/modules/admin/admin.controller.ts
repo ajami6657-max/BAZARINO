@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import { AuthTokenGuard } from '../stores/auth-token.guard';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
@@ -19,7 +19,7 @@ export class AdminController {
   @Patch('users/:id/status')
   setUserStatus(@Param('id') id: string, @Body() body: { status: string }, @Req() request: RequestWithUser) {
     if (id === request.user.id && body.status !== 'ACTIVE') {
-      return this.admin.setUserStatus(id, 'ACTIVE').then(() => { throw new Error('Administrators cannot suspend their own account'); });
+      throw new ForbiddenException('Administrators cannot change their own account status');
     }
     return this.admin.setUserStatus(id, body.status);
   }
