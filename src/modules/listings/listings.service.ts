@@ -53,6 +53,19 @@ export class ListingsService {
     });
   }
 
+  async publish(sellerId: string, listingId: string) {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException('Product not found');
+    if (listing.sellerId !== sellerId) throw new ForbiddenException('You cannot publish another seller product');
+    if (listing.status === 'ARCHIVED' || listing.status === 'SOLD') {
+      throw new ForbiddenException('This product cannot be published in its current status');
+    }
+    return this.prisma.listing.update({
+      where: { id: listingId },
+      data: { status: 'ACTIVE' },
+    });
+  }
+
   async archive(sellerId: string, listingId: string) {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException('Product not found');
