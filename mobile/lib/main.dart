@@ -30,6 +30,7 @@ class MarketHome extends StatefulWidget {
 
 class _MarketHomeState extends State<MarketHome> {
   int selectedTab = 0;
+  final sellerPageKey = GlobalKey<_SellerPageState>();
   bool checking = false;
   String apiStatus = 'در حال بررسی اتصال';
 
@@ -62,7 +63,7 @@ class _MarketHomeState extends State<MarketHome> {
       _homeContent(),
       const _MarketPage(),
       const _CartPage(),
-      const _SellerPage(),
+      _SellerPage(key: sellerPageKey),
       const _EmptyPage(icon: Icons.chat_bubble_outline, title: 'پیام‌ها', subtitle: 'گفت‌وگوی خریدار و فروشنده در مرحله بعد متصل می‌شود.'),
       const _AuthPage(),
     ];
@@ -76,7 +77,10 @@ class _MarketHomeState extends State<MarketHome> {
         body: IndexedStack(index: selectedTab, children: pages),
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedTab,
-          onDestinationSelected: (value) => setState(() => selectedTab = value),
+          onDestinationSelected: (value) {
+            setState(() => selectedTab = value);
+            if (value == 3) sellerPageKey.currentState?.load();
+          },
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
             NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'بازار'),
