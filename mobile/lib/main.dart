@@ -60,8 +60,9 @@ class _MarketHomeState extends State<MarketHome> {
   Widget build(BuildContext context) {
     final pages = [
       _homeContent(),
-      const _EmptyPage(icon: Icons.storefront_outlined, title: 'بازار کالاها', subtitle: 'کالاها و فروشگاه‌های واقعی پس از اتصال سرویس نمایش داده می‌شوند.'),
-      const _EmptyPage(icon: Icons.chat_bubble_outline, title: 'پیام‌ها', subtitle: 'گفت‌وگوی خریدار و فروشنده در این بخش قرار می‌گیرد.'),
+      const _MarketPage(),
+      const _CartPage(),
+      const _EmptyPage(icon: Icons.chat_bubble_outline, title: 'پیام‌ها', subtitle: 'گفت‌وگوی خریدار و فروشنده در مرحله بعد متصل می‌شود.'),
       const _AuthPage(),
     ];
     return Directionality(
@@ -78,6 +79,7 @@ class _MarketHomeState extends State<MarketHome> {
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
             NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'بازار'),
+            NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), selectedIcon: Icon(Icons.shopping_cart), label: 'سبد خرید'),
             NavigationDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: 'پیام‌ها'),
             NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حساب'),
           ],
@@ -110,7 +112,7 @@ class _MarketHomeState extends State<MarketHome> {
       Row(children: [
         Expanded(child: _QuickAction(icon: Icons.search, label: 'جست‌وجوی کالا', onTap: () => setState(() => selectedTab = 1))),
         const SizedBox(width: 12),
-        Expanded(child: _QuickAction(icon: Icons.add_business_outlined, label: 'راه‌اندازی فروشگاه', onTap: () => setState(() => selectedTab = 3))),
+        Expanded(child: _QuickAction(icon: Icons.add_business_outlined, label: 'راه‌اندازی فروشگاه', onTap: () => setState(() => selectedTab = 4))),
       ]),
       const SizedBox(height: 22),
       const Text('وضعیت سامانه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -294,4 +296,110 @@ class _AuthPageState extends State<_AuthPage> {
       ],
     );
   }
+}
+
+class _MarketPage extends StatefulWidget {
+  const _MarketPage();
+  @override
+  State<_MarketPage> createState() => _MarketPageState();
+}
+class _MarketPageState extends State<_MarketPage> {
+  final search = TextEditingController();
+  List<dynamic> products = [];
+  bool loading = false;
+  String message = 'در حال دریافت کالاها...';
+  @override
+  void initState() { super.initState(); load(); }
+  Future<void> load() async {
+    setState(() => loading = true);
+    try {
+      final q = search.text.trim();
+      final uri = Uri.parse('$apiBaseUrl/listings').replace(queryParameters: q.isEmpty ? null : {'q': q});
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() { products = data is List ? data : (data['items'] as List? ?? []); message = products.isEmpty ? 'هنوز کالای فعالی ثبت نشده است.' : ''; });
+      } else { setState(() => message = 'دریافت کالاها ناموفق بود. کد: ' + response.statusCode.toString()); }
+    } catch (_) { setState(() => message = 'سرور بازارینو در دسترس نیست.'); }
+    finally { if (mounted) setState(() => loading = false); }
+  }
+  Future<void> add(Map<String, dynamic> product) async {
+    final token = await const FlutterSecureStorage().read(key: 'bazarino_access_token');
+    if (token == null) { setState(() => message = 'برای افزودن کالا ابتدا وارد حساب شوید.'); return; }
+    try {
+      final response = await http.post(Uri.parse('$apiBaseUrl/cart/items'),
+        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + token},
+        body: jsonEncode({'listingId': product['id'], 'quantity': 1}));
+      if (mounted) setState(() => message = response.statusCode >= 200 && response.statusCode < 300 ? 'کالا به سبد خرید اضافه شد.' : 'افزودن کالا ناموفق بود.');
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+  }
+  @override
+  void dispose() { search.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+      Expanded(child: TextField(controller: search, textInputAction: TextInputAction.search, onSubmitted: (_) => load(), decoration: const InputDecoration(hintText: 'نام کالا یا برند...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()))),
+      const SizedBox(width: 8), IconButton.filled(onPressed: loading ? null : load, icon: const Icon(Icons.search)),
+    ])),
+    if (message.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), child: Text(message, style: const TextStyle(color: Color(0xFFE8B85B)))),
+    if (loading) const LinearProgressIndicator(),
+    Expanded(child: RefreshIndicator(onRefresh: load, child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: products.length,
+      itemBuilder: (context, index) {
+        final p = products[index] as Map<String, dynamic>;
+        final store = p['store'] as Map<String, dynamic>?;
+        return Card(color: const Color(0xFF10233D), child: ListTile(
+          title: Text(p['title']?.toString() ?? 'کالا'),
+          subtitle: Text((p['price']?.toString() ?? '') + ' ' + (p['currency']?.toString() ?? '') + ' • ' + (store?['name']?.toString() ?? 'فروشگاه')),
+          trailing: IconButton(onPressed: () => add(p), icon: const Icon(Icons.add_shopping_cart, color: Color(0xFFE8B85B))),
+        ));
+      }))),
+  ]);
+}
+class _CartPage extends StatefulWidget {
+  const _CartPage();
+  @override
+  State<_CartPage> createState() => _CartPageState();
+}
+class _CartPageState extends State<_CartPage> {
+  static const storage = FlutterSecureStorage();
+  List<dynamic> items = [];
+  bool loading = false;
+  String message = 'برای مشاهده سبد خرید وارد حساب شوید.';
+  Future<void> load() async {
+    setState(() => loading = true);
+    try {
+      final token = await storage.read(key: 'bazarino_access_token');
+      if (token == null) { setState(() { items = []; message = 'ابتدا وارد حساب کاربری شوید.'; }); return; }
+      final response = await http.get(Uri.parse('$apiBaseUrl/cart'), headers: {'Authorization':'Bearer ' + token});
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        setState(() { items = data['items'] as List? ?? []; message = items.isEmpty ? 'سبد خرید شما خالی است.' : ''; });
+      } else { setState(() => message = 'دریافت سبد خرید ناموفق بود.'); }
+    } catch (_) { setState(() => message = 'اتصال به سرور برقرار نشد.'); }
+    finally { if (mounted) setState(() => loading = false); }
+  }
+  Future<void> checkout() async {
+    final token = await storage.read(key: 'bazarino_access_token');
+    if (token == null) return;
+    try {
+      final response = await http.post(Uri.parse('$apiBaseUrl/cart/checkout'), headers: {'Authorization':'Bearer ' + token});
+      if (!mounted) return;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        setState(() => message = 'سفارش‌ها ایجاد شدند؛ پرداخت هنوز به درگاه متصل نیست.');
+        await load();
+      } else { setState(() => message = 'ثبت سفارش ناموفق بود.'); }
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+  }
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Expanded(child: Text('سبد خرید', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))), IconButton(onPressed: loading ? null : load, icon: const Icon(Icons.refresh))])),
+    if (loading) const LinearProgressIndicator(),
+    if (message.isNotEmpty) Padding(padding: const EdgeInsets.all(12), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE8B85B)))),
+    Expanded(child: ListView.builder(itemCount: items.length, itemBuilder: (context, i) {
+      final line = items[i] as Map<String, dynamic>;
+      final listing = line['listing'] as Map<String, dynamic>? ?? {};
+      return ListTile(title: Text(listing['title']?.toString() ?? 'کالا'), subtitle: Text('تعداد: ' + (line['quantity']?.toString() ?? '1')));
+    })),
+    if (items.isNotEmpty) Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: checkout, child: const Text('ثبت سفارش‌ها')))),
+  ]);
 }
