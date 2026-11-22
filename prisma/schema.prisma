@@ -56,8 +56,8 @@ model Listing {
   updatedAt   DateTime @updatedAt
   seller      User @relation(fields: [sellerId], references: [id])
   store       Store? @relation(fields: [storeId], references: [id])
-  @@index([countryCode, category, status])
   orders      Order[]
+  @@index([countryCode, category, status])
   @@index([currency, price])
 }
 model Order {
