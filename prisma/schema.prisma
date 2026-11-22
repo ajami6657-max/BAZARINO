@@ -20,6 +20,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   listings     Listing[]
+  cart         Cart?
   buyerOrders  Order[] @relation("OrderBuyer")
   sellerOrders Order[] @relation("OrderSeller")
   store        Store?
@@ -28,6 +29,26 @@ model User {
   payoutAccounts SellerPayoutAccount[]
   payouts      SellerPayout[]
   @@index([countryCode, status])
+}
+model Cart {
+  id        String @id @default(uuid())
+  buyerId   String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  buyer     User @relation(fields: [buyerId], references: [id])
+  items     CartItem[]
+}
+model CartItem {
+  id        String @id @default(uuid())
+  cartId    String
+  listingId String
+  quantity  Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  @@unique([cartId, listingId])
+  @@index([listingId])
 }
 model Store {
   id          String   @id @default(uuid())
@@ -57,6 +78,7 @@ model Listing {
   seller      User @relation(fields: [sellerId], references: [id])
   store       Store? @relation(fields: [storeId], references: [id])
   orders      Order[]
+  cartItems   CartItem[]
   @@index([countryCode, category, status])
   @@index([currency, price])
 }
