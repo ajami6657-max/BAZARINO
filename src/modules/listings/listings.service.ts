@@ -34,12 +34,13 @@ export class ListingsService {
     });
   }
 
-  async publicSearch(query?: string, category?: string, countryCode?: string) {
+  async publicSearch(query?: string, category?: string, countryCode?: string, currency?: string) {
     return this.prisma.listing.findMany({
       where: {
         status: 'ACTIVE',
         ...(category ? { category: { equals: category, mode: 'insensitive' as const } } : {}),
         ...(countryCode ? { countryCode } : {}),
+        ...(currency ? { currency: currency.toUpperCase() } : {}),
         ...(query ? {
           OR: [
             { title: { contains: query, mode: 'insensitive' as const } },
@@ -47,7 +48,8 @@ export class ListingsService {
           ],
         } : {}),
       },
-      orderBy: [{ price: 'asc' }, { createdAt: 'desc' }],
+      // Prices are only comparable when the currency is identical.
+      orderBy: currency ? [{ price: 'asc' }, { createdAt: 'desc' }] : [{ createdAt: 'desc' }],
       take: 50,
       include: { store: { select: { id: true, name: true, countryCode: true } } },
     });
