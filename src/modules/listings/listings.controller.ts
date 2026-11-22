@@ -14,8 +14,9 @@ export class ListingsController {
     @Query('q') query?: string,
     @Query('category') category?: string,
     @Query('countryCode') countryCode?: string,
+    @Query('currency') currency?: string,
   ) {
-    return this.listings.publicSearch(query, category, countryCode);
+    return this.listings.publicSearch(query, category, countryCode, currency);
   }
 
   @Post()
