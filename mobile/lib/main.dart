@@ -47,7 +47,7 @@ class _MarketHomeState extends State<MarketHome> {
         jsonDecode(response.body);
         setState(() => apiStatus = 'سرور متصل است');
       } else {
-        setState(() => apiStatus = 'پاسخ سرور: ' + response.statusCode.toString());
+        setState(() => apiStatus = 'پاسخ سرور: ${response.statusCode}');
       }
     } catch (_) {
       setState(() => apiStatus = 'سرور هنوز تنظیم یا در دسترس نیست');
