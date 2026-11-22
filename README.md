@@ -54,3 +54,12 @@ AI is an assistant for moderation triage, listing enrichment, translation and su
 
 ## Security
 Never commit secrets. Configure production secrets in the deployment platform. Do not store card data. Configure a strong random `JWT_SECRET` of at least 32 characters. Use a licensed payment provider for each supported country and verify legal availability before enabling checkout.
+
+
+## Orders API
+
+- `POST /api/v1/orders` — create an order for one active listing (Bearer token; body: `listingId`, `quantity`)
+- `GET /api/v1/orders/mine` — list the signed-in buyer's orders
+- `GET /api/v1/orders/seller` — list orders for the signed-in seller
+
+Order creation snapshots the current listing price and returns the configured 0.5% commission calculation. This creates an order only; checkout, payment collection, and seller payout remain disabled until a supported payment provider is configured.
