@@ -16,7 +16,7 @@ export class StoresService {
           name: dto.name.trim(),
           description: dto.description?.trim(),
           countryCode: dto.countryCode,
-          defaultCurrency: dto.defaultCurrency ?? 'USD',
+          defaultCurrency: dto.defaultCurrency ?? (dto.countryCode === 'IR' ? 'IRR' : 'USD'),
         },
       });
       await tx.user.update({ where: { id: ownerId }, data: { role: 'SELLER' } });
