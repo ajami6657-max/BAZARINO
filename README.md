@@ -6,11 +6,12 @@ Bazarino is a multi-country marketplace foundation combining listings, storefron
 ## Architecture
 - API: NestJS + TypeScript
 - Database: PostgreSQL + Prisma
-- Mobile: Expo / React Native
+- Mobile: Flutter / Dart (Android + iOS, single codebase)
 - API prefix: `/api/v1`
 - International-ready fields: ISO country codes, BCP-47 locale codes, ISO currency codes, localized product content.
 
-## Start the API
+## Mobile app
+The mobile client uses Flutter; Expo and React Native have been removed. See `mobile/README.md` for local run instructions. GitHub Actions runs Flutter static analysis.\n\n## Start the API
 ```bash
 cp .env.example .env
 npm install
