@@ -63,3 +63,15 @@ Never commit secrets. Configure production secrets in the deployment platform. D
 - `GET /api/v1/orders/seller` — list orders for the signed-in seller
 
 Order creation snapshots the current listing price and returns the configured 0.5% commission calculation. This creates an order only; checkout, payment collection, and seller payout remain disabled until a supported payment provider is configured.
+
+
+## Cart and order management
+
+- `GET /api/v1/cart` — view the authenticated buyer's persistent cart
+- `POST /api/v1/cart/items` — add quantity of a listing (body: `listingId`, `quantity`)
+- `DELETE /api/v1/cart/items/:listingId` — remove a listing from the cart
+- `POST /api/v1/cart/checkout` — create one order per cart line; mixed currencies remain separate
+- `POST /api/v1/orders/:id/cancel` — buyer cancels their pending unpaid order
+- `POST /api/v1/orders/:id/fulfill` — seller fulfills a paid order
+
+Checkout creates orders only. It does not collect money; payment remains disabled until a supported payment provider is connected.
