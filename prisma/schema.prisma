@@ -80,7 +80,7 @@ model Payment {
   idempotencyKey    String @unique
   currency          String
   grossAmount       Decimal @db.Decimal(18, 4)
-  commissionBps     Int @default(200)
+  commissionBps     Int @default(50)
   platformFee       Decimal @db.Decimal(18, 4)
   sellerNet         Decimal @db.Decimal(18, 4)
   status            PaymentStatus @default(INITIATED)
