@@ -35,3 +35,10 @@ This commit establishes the API, database schema, health endpoint, AI service bo
 
 ## Security
 Never commit secrets. Configure production secrets in the deployment platform. Do not store card data. Use a licensed payment provider for each supported country and verify legal availability before enabling checkout.
+
+
+## Authentication API
+- `POST /api/v1/auth/register` — create an account with an email or phone number and an 8–72 character password.
+- `POST /api/v1/auth/login` — authenticate with `identifier` (email or phone) and password.
+
+Both endpoints return a Bearer access token and a safe user profile (never the password hash). Configure a random `JWT_SECRET` of at least 32 characters and a PostgreSQL `DATABASE_URL` before running the API. Do not use the development JWT fallback in production.
