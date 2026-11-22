@@ -32,7 +32,7 @@ npx prisma migrate deploy
 - `POST /api/v1/auth/login` — sign in with email or phone
 
 ## Payments and seller commission
-- Platform commission is configured as **2% (200 basis points)** by default.
+- Platform commission is configured as **0.5% (50 basis points)** by default.
 - Each payment stores an immutable checkout-time snapshot: gross amount, commission rate, platform fee, seller net amount and currency.
 - Seller payout accounts store only the payment provider's beneficiary token/reference and masked account suffix; never store card numbers, CVV or raw banking credentials.
 - Payouts are tracked separately from successful customer payments. A payment is not marked as paid out until the provider confirms the transfer.
