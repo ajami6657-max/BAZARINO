@@ -62,6 +62,7 @@ class _MarketHomeState extends State<MarketHome> {
       _homeContent(),
       const _MarketPage(),
       const _CartPage(),
+      const _SellerPage(),
       const _EmptyPage(icon: Icons.chat_bubble_outline, title: 'پیام‌ها', subtitle: 'گفت‌وگوی خریدار و فروشنده در مرحله بعد متصل می‌شود.'),
       const _AuthPage(),
     ];
@@ -80,6 +81,7 @@ class _MarketHomeState extends State<MarketHome> {
             NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'خانه'),
             NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'بازار'),
             NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), selectedIcon: Icon(Icons.shopping_cart), label: 'سبد خرید'),
+            NavigationDestination(icon: Icon(Icons.store_mall_directory_outlined), selectedIcon: Icon(Icons.store), label: 'فروشنده'),
             NavigationDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: 'پیام‌ها'),
             NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حساب'),
           ],
@@ -112,7 +114,7 @@ class _MarketHomeState extends State<MarketHome> {
       Row(children: [
         Expanded(child: _QuickAction(icon: Icons.search, label: 'جست‌وجوی کالا', onTap: () => setState(() => selectedTab = 1))),
         const SizedBox(width: 12),
-        Expanded(child: _QuickAction(icon: Icons.add_business_outlined, label: 'راه‌اندازی فروشگاه', onTap: () => setState(() => selectedTab = 4))),
+        Expanded(child: _QuickAction(icon: Icons.add_business_outlined, label: 'راه‌اندازی فروشگاه', onTap: () => setState(() => selectedTab = 3))),
       ]),
       const SizedBox(height: 22),
       const Text('وضعیت سامانه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -404,4 +406,184 @@ class _CartPageState extends State<_CartPage> {
     })),
     if (items.isNotEmpty) Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity, child: FilledButton(onPressed: checkout, child: const Text('ثبت سفارش‌ها')))),
   ]);
+}
+
+class _SellerPage extends StatefulWidget {
+  const _SellerPage();
+  @override
+  State<_SellerPage> createState() => _SellerPageState();
+}
+class _SellerPageState extends State<_SellerPage> {
+  static const storage = FlutterSecureStorage();
+  final storeName = TextEditingController();
+  final storeDescription = TextEditingController();
+  final productTitle = TextEditingController();
+  final productDescription = TextEditingController();
+  final productPrice = TextEditingController();
+  final productCategory = TextEditingController();
+  final countryCode = TextEditingController(text: 'IR');
+  Map<String, dynamic>? store;
+  List<dynamic> listings = [];
+  List<dynamic> orders = [];
+  bool loading = false;
+  bool saving = false;
+  String message = '';
+  String? get token => _token;
+  String? _token;
+
+  @override
+  void initState() { super.initState(); load(); }
+
+  Future<void> load() async {
+    setState(() { loading = true; message = ''; });
+    try {
+      _token = await storage.read(key: 'bazarino_access_token');
+      if (_token == null) { setState(() => message = 'برای ورود به پنل فروشنده ابتدا وارد حساب شوید.'); return; }
+      final headers = {'Authorization': 'Bearer ' + _token!};
+      final responses = await Future.wait([
+        http.get(Uri.parse('$apiBaseUrl/stores/me'), headers: headers),
+        http.get(Uri.parse('$apiBaseUrl/listings/mine'), headers: headers),
+        http.get(Uri.parse('$apiBaseUrl/orders/seller'), headers: headers),
+      ]);
+      if (!mounted) return;
+      if (responses[0].statusCode == 200) {
+        final data = jsonDecode(responses[0].body);
+        store = data is Map<String, dynamic> ? data : null;
+      } else if (responses[0].statusCode == 404) { store = null; }
+      if (responses[1].statusCode == 200) {
+        final data = jsonDecode(responses[1].body);
+        listings = data is List ? data : [];
+      }
+      if (responses[2].statusCode == 200) {
+        final data = jsonDecode(responses[2].body);
+        orders = data is List ? data : [];
+      }
+      setState(() => message = store == null ? 'فروشگاه رایگان خود را بسازید.' : '');
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+    finally { if (mounted) setState(() => loading = false); }
+  }
+
+  Future<void> createStore() async {
+    final name = storeName.text.trim();
+    final country = countryCode.text.trim().toUpperCase();
+    if (name.length < 2 || !RegExp(r'^[A-Z]{2}$').hasMatch(country)) {
+      setState(() => message = 'نام فروشگاه و کد کشور دوحرفی معتبر وارد کنید.');
+      return;
+    }
+    await _send('/stores', {'name': name, 'description': storeDescription.text.trim(), 'countryCode': country, 'defaultCurrency': country == 'IR' ? 'IRR' : 'USD'}, 'فروشگاه ساخته شد.');
+  }
+
+  Future<void> createProduct() async {
+    final price = double.tryParse(productPrice.text.trim());
+    if (productTitle.text.trim().length < 2 || productCategory.text.trim().length < 2 || price == null || price <= 0) {
+      setState(() => message = 'عنوان، دسته‌بندی و قیمت معتبر وارد کنید.');
+      return;
+    }
+    await _send('/listings', {
+      'title': productTitle.text.trim(), 'description': productDescription.text.trim(),
+      'price': price, 'category': productCategory.text.trim(),
+    }, 'محصول به‌صورت پیش‌نویس ثبت شد.');
+    productTitle.clear(); productDescription.clear(); productPrice.clear(); productCategory.clear();
+  }
+
+  Future<void> _send(String path, Map<String, dynamic> body, String success) async {
+    final authToken = _token ?? await storage.read(key: 'bazarino_access_token');
+    if (authToken == null) { setState(() => message = 'ابتدا وارد حساب شوید.'); return; }
+    setState(() { saving = true; message = ''; });
+    try {
+      final response = await http.post(Uri.parse('$apiBaseUrl$path'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken},
+        body: jsonEncode(body));
+      if (!mounted) return;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        setState(() => message = success);
+        await load();
+      } else {
+        String error = 'عملیات ناموفق بود (' + response.statusCode.toString() + ')';
+        try { final data = jsonDecode(response.body); if (data['message'] is String) error = data['message']; } catch (_) {}
+        setState(() => message = error);
+      }
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+    finally { if (mounted) setState(() => saving = false); }
+  }
+
+  Future<void> changeListing(String id, String action) async {
+    final authToken = _token;
+    if (authToken == null) return;
+    try {
+      final response = await http.patch(Uri.parse('$apiBaseUrl/listings/$id/$action'), headers: {'Authorization': 'Bearer ' + authToken});
+      if (response.statusCode >= 200 && response.statusCode < 300) { await load(); }
+      else if (mounted) setState(() => message = 'تغییر وضعیت محصول انجام نشد.');
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+  }
+
+  @override
+  void dispose() {
+    storeName.dispose(); storeDescription.dispose(); productTitle.dispose(); productDescription.dispose();
+    productPrice.dispose(); productCategory.dispose(); countryCode.dispose(); super.dispose();
+  }
+
+  Widget field(TextEditingController controller, String label, {TextInputType type = TextInputType.text, int lines = 1}) =>
+    Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: controller, keyboardType: type, maxLines: lines,
+      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true)));
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: load,
+    child: ListView(padding: const EdgeInsets.all(16), children: [
+      Row(children: [const Expanded(child: Text('پنل فروشنده', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold))), IconButton(onPressed: loading ? null : load, icon: const Icon(Icons.refresh))]),
+      if (loading) const LinearProgressIndicator(),
+      if (message.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text(message, style: const TextStyle(color: Color(0xFFE8B85B)))),
+      if (_token == null) ...[
+        const Text('ورود به حساب از بخش «حساب» لازم است.'),
+      ] else if (store == null) ...[
+        const Text('ساخت فروشگاه رایگان است؛ فقط از فروش موفق کمیسیون ۰٫۵٪ دریافت می‌شود.', style: TextStyle(height: 1.8)),
+        const SizedBox(height: 12),
+        field(storeName, 'نام فروشگاه'),
+        field(storeDescription, 'توضیحات فروشگاه', lines: 3),
+        field(countryCode, 'کد کشور (مثلاً IR)'),
+        FilledButton(onPressed: saving ? null : createStore, child: const Text('ساخت فروشگاه رایگان')),
+      ] else ...[
+        Card(color: const Color(0xFF10233D), child: ListTile(
+          leading: const Icon(Icons.store, color: Color(0xFFE8B85B)),
+          title: Text(store!['name']?.toString() ?? 'فروشگاه من'),
+          subtitle: Text('کشور: ' + (store!['countryCode']?.toString() ?? '') + ' • ارز: ' + (store!['defaultCurrency']?.toString() ?? '')),
+        )),
+        const SizedBox(height: 16),
+        const Text('ثبت محصول جدید', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        field(productTitle, 'عنوان محصول'),
+        field(productDescription, 'توضیحات', lines: 3),
+        field(productCategory, 'دسته‌بندی'),
+        field(productPrice, 'قیمت', type: const TextInputType.numberWithOptions(decimal: true)),
+        FilledButton.icon(onPressed: saving ? null : createProduct, icon: const Icon(Icons.add), label: const Text('ثبت محصول')),
+        const SizedBox(height: 22),
+        Text('محصولات من (' + listings.length.toString() + ')', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        if (listings.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('هنوز محصولی ثبت نکرده‌اید.')),
+        ...listings.map((raw) {
+          final p = raw as Map<String, dynamic>;
+          final id = p['id']?.toString() ?? '';
+          final status = p['status']?.toString() ?? '';
+          return Card(color: const Color(0xFF10233D), child: ListTile(
+            title: Text(p['title']?.toString() ?? 'محصول'),
+            subtitle: Text((p['price']?.toString() ?? '') + ' ' + (p['currency']?.toString() ?? '') + ' • ' + status),
+            trailing: status == 'ACTIVE'
+              ? IconButton(tooltip: 'بایگانی', onPressed: () => changeListing(id, 'archive'), icon: const Icon(Icons.archive_outlined))
+              : IconButton(tooltip: 'انتشار', onPressed: () => changeListing(id, 'publish'), icon: const Icon(Icons.publish, color: Color(0xFFE8B85B))),
+          ));
+        }),
+        const SizedBox(height: 22),
+        Text('سفارش‌های دریافتی (' + orders.length.toString() + ')', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        if (orders.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('هنوز سفارشی دریافت نشده است.')),
+        ...orders.map((raw) {
+          final order = raw as Map<String, dynamic>;
+          final listing = order['listing'] as Map<String, dynamic>?;
+          return Card(color: const Color(0xFF10233D), child: ListTile(
+            title: Text(listing?['title']?.toString() ?? 'سفارش'),
+            subtitle: Text('وضعیت: ' + (order['status']?.toString() ?? '') + ' • مبلغ: ' + (order['subtotal']?.toString() ?? '')),
+          ));
+        }),
+      ],
+    ]),
+  );
 }
