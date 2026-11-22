@@ -30,6 +30,8 @@ npx prisma migrate deploy
 - `GET /api/v1/ai/status` — AI module readiness and configured provider status
 - `POST /api/v1/auth/register` — register with email or phone
 - `POST /api/v1/auth/login` — sign in with email or phone
+- `POST /api/v1/stores` — create a free seller store (Bearer token required); defaults to IRR for Iran and USD elsewhere
+- `GET /api/v1/stores/me` — retrieve the signed-in seller's store
 
 ## Payments and seller commission
 - Platform commission is configured as **0.5% (50 basis points)** by default.
