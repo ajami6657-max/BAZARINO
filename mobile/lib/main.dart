@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const apiBaseUrl = String.fromEnvironment('BAZARINO_API_URL', defaultValue: 'http://10.0.2.2:3000/api/v1');
 
@@ -61,7 +62,7 @@ class _MarketHomeState extends State<MarketHome> {
       _homeContent(),
       const _EmptyPage(icon: Icons.storefront_outlined, title: 'بازار کالاها', subtitle: 'کالاها و فروشگاه‌های واقعی پس از اتصال سرویس نمایش داده می‌شوند.'),
       const _EmptyPage(icon: Icons.chat_bubble_outline, title: 'پیام‌ها', subtitle: 'گفت‌وگوی خریدار و فروشنده در این بخش قرار می‌گیرد.'),
-      const _EmptyPage(icon: Icons.person_outline, title: 'حساب کاربری', subtitle: 'ورود، ثبت‌نام و تنظیمات حساب کاربری.'),
+      const _AuthPage(),
     ];
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -164,4 +165,133 @@ class _EmptyPage extends StatelessWidget {
       ]),
     ),
   );
+}
+
+
+class _AuthPage extends StatefulWidget {
+  const _AuthPage();
+  @override
+  State<_AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<_AuthPage> {
+  static const storage = FlutterSecureStorage();
+  final identifier = TextEditingController();
+  final password = TextEditingController();
+  final displayName = TextEditingController();
+  bool registering = false;
+  bool busy = false;
+  String message = '';
+  String? token;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final saved = await storage.read(key: 'bazarino_access_token');
+    if (mounted) setState(() => token = saved);
+  }
+
+  Future<void> _submit() async {
+    final id = identifier.text.trim();
+    if (id.isEmpty || password.text.length < 8) {
+      setState(() => message = 'ایمیل یا شماره تلفن و رمز حداقل ۸ کاراکتری وارد کنید.');
+      return;
+    }
+    setState(() { busy = true; message = ''; });
+    try {
+      final path = registering ? '/auth/register' : '/auth/login';
+      final payload = registering
+          ? <String, dynamic>{
+              if (id.contains('@')) 'email': id else 'phone': id,
+              'password': password.text,
+              if (displayName.text.trim().isNotEmpty) 'displayName': displayName.text.trim(),
+            }
+          : <String, dynamic>{'identifier': id, 'password': password.text};
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl$path'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 15));
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode >= 200 && response.statusCode < 300 && data['accessToken'] is String) {
+        await storage.write(key: 'bazarino_access_token', value: data['accessToken'] as String);
+        if (mounted) setState(() { token = data['accessToken'] as String; message = 'ورود با موفقیت انجام شد.'; });
+      } else {
+        final raw = data['message'];
+        setState(() => message = raw is String ? raw : 'عملیات ناموفق بود. اطلاعات را بررسی کنید.');
+      }
+    } catch (_) {
+      setState(() => message = 'اتصال به سرور برقرار نشد. آدرس API و سرور را بررسی کنید.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    await storage.delete(key: 'bazarino_access_token');
+    if (mounted) setState(() { token = null; message = 'از حساب خارج شدید.'; });
+  }
+
+  @override
+  void dispose() {
+    identifier.dispose();
+    password.dispose();
+    displayName.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (token != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.verified_user_outlined, color: Color(0xFFE8B85B), size: 58),
+            const SizedBox(height: 16),
+            const Text('نشست کاربری ذخیره شده است', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('توکن ورود به‌صورت امن روی دستگاه نگهداری می‌شود.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9EACC0))),
+            const SizedBox(height: 20),
+            OutlinedButton(onPressed: _logout, child: const Text('خروج از حساب')),
+          ]),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Icon(Icons.account_circle_outlined, color: Color(0xFFE8B85B), size: 54),
+        const SizedBox(height: 12),
+        Text(registering ? 'ساخت حساب بازارینو' : 'ورود به بازارینو', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 22),
+        if (registering) ...[
+          TextField(controller: displayName, decoration: const InputDecoration(labelText: 'نام نمایشی', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: identifier,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'ایمیل یا شماره تلفن', border: OutlineInputBorder(), prefixIcon: Icon(Icons.alternate_email)),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: password,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'رمز عبور (حداقل ۸ کاراکتر)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock_outline)),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: busy ? null : _submit,
+          child: busy ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(registering ? 'ثبت‌نام' : 'ورود'),
+        ),
+        TextButton(onPressed: busy ? null : () => setState(() { registering = !registering; message = ''; }), child: Text(registering ? 'حساب دارید؟ وارد شوید' : 'حساب ندارید؟ ثبت‌نام کنید')),
+        if (message.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE8B85B)))),
+      ],
+    );
+  }
 }
