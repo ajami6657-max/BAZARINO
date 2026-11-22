@@ -362,6 +362,8 @@ class _CartPage extends StatefulWidget {
 }
 class _CartPageState extends State<_CartPage> {
   static const storage = FlutterSecureStorage();
+  @override
+  void initState() { super.initState(); load(); }
   List<dynamic> items = [];
   bool loading = false;
   String message = 'برای مشاهده سبد خرید وارد حساب شوید.';
