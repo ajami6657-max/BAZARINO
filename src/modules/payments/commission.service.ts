@@ -18,7 +18,7 @@ export class CommissionService {
       throw new BadRequestException(`Unsupported currency for settlement: ${code}`);
     }
 
-    const commissionBps = Number(this.config.get<string>('PLATFORM_COMMISSION_BPS') ?? '200');
+    const commissionBps = Number(this.config.get<string>('PLATFORM_COMMISSION_BPS') ?? '50');
     if (!Number.isInteger(commissionBps) || commissionBps < 0 || commissionBps > 10000) {
       throw new Error('PLATFORM_COMMISSION_BPS must be an integer from 0 to 10000');
     }
