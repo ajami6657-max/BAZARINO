@@ -35,6 +35,7 @@ npx prisma migrate deploy
 - `POST /api/v1/listings` — create a product draft for the signed-in seller's store (Bearer token required)
 - `GET /api/v1/listings/mine` — list the signed-in seller's products (Bearer token required)
 - `GET /api/v1/listings` — search active products; optional `q`, `category`, and `countryCode` query parameters
+- `PATCH /api/v1/listings/:id/publish` — publish one of the seller's own product drafts (Bearer token required)
 - `PATCH /api/v1/listings/:id/archive` — archive one of the seller's own products (Bearer token required)
 
 New products start as drafts and are not publicly searchable until a later publishing/moderation flow activates them.
