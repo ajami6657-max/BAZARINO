@@ -20,6 +20,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   listings     Listing[]
+  classifiedAds ClassifiedAd[]
   cart         Cart?
   buyerOrders  Order[] @relation("OrderBuyer")
   sellerOrders Order[] @relation("OrderSeller")
@@ -216,4 +217,43 @@ enum AiTaskStatus {
   SUCCEEDED
   FAILED
   REVIEW_REQUIRED
+}
+
+
+model ClassifiedAd {
+  id           String @id @default(uuid())
+  ownerId      String
+  title        String
+  description  String
+  category     String
+  adType       ClassifiedAdType @default(GOODS)
+  condition    String?
+  price        Decimal? @db.Decimal(18, 4)
+  currency     String @default("IRR")
+  isNegotiable Boolean @default(false)
+  isFree       Boolean @default(false)
+  countryCode  String @default("IR")
+  city         String
+  area         String?
+  images       String[] @default([])
+  status       ClassifiedAdStatus @default(ACTIVE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  owner        User @relation(fields: [ownerId], references: [id])
+  @@index([countryCode, city, category, status])
+  @@index([status, createdAt])
+}
+
+enum ClassifiedAdType {
+  GOODS
+  VEHICLE
+  REAL_ESTATE
+  SERVICES
+  JOBS
+}
+
+enum ClassifiedAdStatus {
+  ACTIVE
+  SOLD
+  ARCHIVED
 }
