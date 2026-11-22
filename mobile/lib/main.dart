@@ -120,6 +120,8 @@ class _MarketHomeState extends State<MarketHome> {
         const SizedBox(width: 12),
         Expanded(child: _QuickAction(icon: Icons.add_business_outlined, label: 'راه‌اندازی فروشگاه', onTap: () => setState(() => selectedTab = 3))),
       ]),
+      const SizedBox(height: 10),
+      _QuickAction(icon: Icons.campaign_outlined, label: 'دیوار بازارینو؛ خرید و فروش آگهی‌های شخصی، خودرو، ملک و خدمات', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const _ClassifiedsPage()))),
       const SizedBox(height: 22),
       const Text('وضعیت سامانه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
@@ -606,5 +608,124 @@ class _SellerPageState extends State<_SellerPage> {
         }),
       ],
     ]),
+  );
+}
+
+
+class _ClassifiedsPage extends StatefulWidget {
+  const _ClassifiedsPage();
+  @override
+  State<_ClassifiedsPage> createState() => _ClassifiedsPageState();
+}
+
+class _ClassifiedsPageState extends State<_ClassifiedsPage> {
+  final search = TextEditingController();
+  final city = TextEditingController();
+  final title = TextEditingController();
+  final description = TextEditingController();
+  final category = TextEditingController(text: 'کالای دست دوم');
+  final price = TextEditingController();
+  List<dynamic> ads = [];
+  bool loading = false;
+  bool posting = false;
+  bool isFree = false;
+  String message = 'آگهی‌های نزدیک خود را جست‌وجو کنید.';
+
+  @override
+  void initState() { super.initState(); load(); }
+
+  Future<void> load() async {
+    setState(() => loading = true);
+    try {
+      final params = <String, String>{
+        if (search.text.trim().isNotEmpty) 'q': search.text.trim(),
+        if (city.text.trim().isNotEmpty) 'city': city.text.trim(),
+      };
+      final uri = Uri.parse('$apiBaseUrl/classifieds').replace(queryParameters: params);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (!mounted) return;
+        setState(() { ads = data is List ? data : []; message = ads.isEmpty ? 'هنوز آگهی فعالی ثبت نشده است.' : ''; });
+      } else if (mounted) { setState(() => message = 'دریافت آگهی‌ها ناموفق بود.'); }
+    } catch (_) { if (mounted) setState(() => message = 'سرور در دسترس نیست.'); }
+    finally { if (mounted) setState(() => loading = false); }
+  }
+
+  Future<void> createAd() async {
+    final token = await const FlutterSecureStorage().read(key: 'bazarino_access_token');
+    if (token == null) { setState(() => message = 'برای ثبت آگهی ابتدا وارد حساب شوید.'); return; }
+    final amount = double.tryParse(price.text.trim());
+    if (title.text.trim().length < 3 || description.text.trim().isEmpty || category.text.trim().length < 2 || city.text.trim().length < 2 || (!isFree && (amount == null || amount < 0))) {
+      setState(() => message = 'عنوان، توضیحات، دسته‌بندی، شهر و قیمت معتبر را وارد کنید.');
+      return;
+    }
+    setState(() { posting = true; message = ''; });
+    try {
+      final response = await http.post(Uri.parse('$apiBaseUrl/classifieds'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+        body: jsonEncode({
+          'title': title.text.trim(), 'description': description.text.trim(),
+          'category': category.text.trim(), 'city': city.text.trim(),
+          'countryCode': 'IR', 'currency': 'IRR', 'isFree': isFree,
+          if (!isFree) 'price': amount,
+          'isNegotiable': true, 'adType': 'GOODS',
+        })).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        title.clear(); description.clear(); price.clear();
+        if (mounted) setState(() => message = 'آگهی شما با موفقیت ثبت شد.');
+        await load();
+      } else if (mounted) {
+        String error = 'ثبت آگهی ناموفق بود.';
+        try { final data = jsonDecode(response.body); if (data['message'] is String) error = data['message']; } catch (_) {}
+        setState(() => message = error);
+      }
+    } catch (_) { if (mounted) setState(() => message = 'ارتباط با سرور برقرار نشد.'); }
+    finally { if (mounted) setState(() => posting = false); }
+  }
+
+  @override
+  void dispose() {
+    search.dispose(); city.dispose(); title.dispose(); description.dispose(); category.dispose(); price.dispose();
+    super.dispose();
+  }
+
+  Widget _field(TextEditingController controller, String label, {int lines = 1, TextInputType type = TextInputType.text}) =>
+    Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: controller, maxLines: lines, keyboardType: type, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true)));
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('آگهی‌های بازارینو')),
+    body: Directionality(textDirection: TextDirection.rtl, child: ListView(padding: const EdgeInsets.all(16), children: [
+      const Text('خرید و فروش مثل دیوار؛ بدون نیاز به ساخت فروشگاه', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 12),
+      _field(search, 'جست‌وجوی آگهی'),
+      _field(city, 'شهر (مثلاً بیرجند)'),
+      FilledButton.icon(onPressed: loading ? null : load, icon: const Icon(Icons.search), label: const Text('جست‌وجو')),
+      const Divider(height: 28),
+      const Text('ثبت آگهی رایگان', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 10),
+      _field(title, 'عنوان آگهی'),
+      _field(description, 'توضیحات کامل', lines: 3),
+      _field(category, 'دسته‌بندی'),
+      _field(price, 'قیمت به ریال', type: const TextInputType.numberWithOptions(decimal: true)),
+      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('این مورد رایگان است'), value: isFree, onChanged: (v) => setState(() => isFree = v)),
+      FilledButton(onPressed: posting ? null : createAd, child: posting ? const CircularProgressIndicator() : const Text('ثبت آگهی')),
+      if (message.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text(message, style: const TextStyle(color: Color(0xFFE8B85B)))),
+      const Divider(height: 28),
+      const Text('آگهی‌های جدید', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      if (loading) const LinearProgressIndicator(),
+      ...ads.map((raw) {
+        final ad = raw as Map<String, dynamic>;
+        final owner = ad['owner'] as Map<String, dynamic>? ?? {};
+        final priceText = ad['isFree'] == true ? 'رایگان' : ((ad['price']?.toString() ?? 'توافقی') + ' ' + (ad['currency']?.toString() ?? ''));
+        return Card(color: const Color(0xFF10233D), child: ListTile(
+          leading: const Icon(Icons.campaign_outlined, color: Color(0xFFE8B85B)),
+          title: Text(ad['title']?.toString() ?? 'آگهی'),
+          subtitle: Text(priceText + ' • ' + (ad['city']?.toString() ?? '') + ' • ' + (ad['category']?.toString() ?? '') + '\\n' + (owner['displayName']?.toString() ?? 'کاربر بازارینو')),
+          isThreeLine: true,
+        ));
+      }),
+    ])),
   );
 }
