@@ -21,6 +21,10 @@ model User {
   updatedAt    DateTime @updatedAt
   listings     Listing[]
   store        Store?
+  buyerPayments Payment[] @relation("PaymentBuyer")
+  sellerPayments Payment[] @relation("PaymentSeller")
+  payoutAccounts SellerPayoutAccount[]
+  payouts      SellerPayout[]
   @@index([countryCode, status])
 }
 model Store {
@@ -62,9 +66,71 @@ model Order {
   subtotal    Decimal @db.Decimal(18, 4)
   status      OrderStatus @default(PENDING)
   createdAt   DateTime @default(now())
+  payment     Payment?
   @@index([buyerId, createdAt])
   @@index([sellerId, createdAt])
 }
+model Payment {
+  id                String @id @default(uuid())
+  orderId           String @unique
+  buyerId           String
+  sellerId          String
+  gatewayCode       String
+  providerPaymentId String? @unique
+  idempotencyKey    String @unique
+  currency          String
+  grossAmount       Decimal @db.Decimal(18, 4)
+  commissionBps     Int @default(200)
+  platformFee       Decimal @db.Decimal(18, 4)
+  sellerNet         Decimal @db.Decimal(18, 4)
+  status            PaymentStatus @default(INITIATED)
+  checkoutUrl       String?
+  providerMetadata  Json?
+  paidAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  order             Order @relation(fields: [orderId], references: [id])
+  buyer             User @relation("PaymentBuyer", fields: [buyerId], references: [id])
+  seller            User @relation("PaymentSeller", fields: [sellerId], references: [id])
+  payouts           SellerPayout[]
+  @@index([sellerId, status, createdAt])
+  @@index([buyerId, createdAt])
+}
+model SellerPayoutAccount {
+  id                    String @id @default(uuid())
+  sellerId              String
+  providerCode           String
+  providerBeneficiaryId  String
+  accountLast4           String?
+  currency               String
+  countryCode            String
+  isDefault              Boolean @default(false)
+  verifiedAt             DateTime?
+  createdAt              DateTime @default(now())
+  seller                 User @relation(fields: [sellerId], references: [id])
+  payouts                SellerPayout[]
+  @@unique([sellerId, providerCode, providerBeneficiaryId])
+  @@index([sellerId, isDefault])
+}
+model SellerPayout {
+  id             String @id @default(uuid())
+  paymentId      String
+  sellerId       String
+  payoutAccountId String
+  amount         Decimal @db.Decimal(18, 4)
+  currency       String
+  providerRef    String? @unique
+  status         PayoutStatus @default(PENDING)
+  failureReason  String?
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  payment        Payment @relation(fields: [paymentId], references: [id])
+  seller         User @relation(fields: [sellerId], references: [id])
+  payoutAccount  SellerPayoutAccount @relation(fields: [payoutAccountId], references: [id])
+  @@index([sellerId, status, createdAt])
+}
+
 model AiTask {
   id          String @id @default(uuid())
   taskType    String
@@ -81,20 +147,17 @@ enum UserRole {
   SELLER
   ADMIN
 }
-
 enum UserStatus {
   ACTIVE
   SUSPENDED
   PENDING
 }
-
 enum ListingStatus {
   DRAFT
   ACTIVE
   SOLD
   ARCHIVED
 }
-
 enum OrderStatus {
   PENDING
   PAID
@@ -102,7 +165,21 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
 }
-
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
 enum AiTaskStatus {
   QUEUED
   RUNNING
