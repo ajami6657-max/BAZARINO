@@ -76,8 +76,37 @@ model AiTask {
   completedAt DateTime?
   @@index([status, createdAt])
 }
-enum UserRole { CUSTOMER SELLER ADMIN }
-enum UserStatus { ACTIVE SUSPENDED PENDING }
-enum ListingStatus { DRAFT ACTIVE SOLD ARCHIVED }
-enum OrderStatus { PENDING PAID FULFILLED CANCELLED REFUNDED }
-enum AiTaskStatus { QUEUED RUNNING SUCCEEDED FAILED REVIEW_REQUIRED }
+enum UserRole {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum AiTaskStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  REVIEW_REQUIRED
+}
