@@ -314,13 +314,15 @@ class _MarketPageState extends State<_MarketPage> {
   List<dynamic> products = [];
   bool loading = false;
   String message = 'در حال دریافت کالاها...';
+  String currencyFilter = '';
   @override
   void initState() { super.initState(); load(); }
   Future<void> load() async {
     setState(() => loading = true);
     try {
       final q = search.text.trim();
-      final uri = Uri.parse('$apiBaseUrl/listings').replace(queryParameters: q.isEmpty ? null : {'q': q});
+      final params = <String, String>{if (q.isNotEmpty) 'q': q, if (currencyFilter.isNotEmpty) 'currency': currencyFilter};
+      final uri = Uri.parse('$apiBaseUrl/listings').replace(queryParameters: params.isEmpty ? null : params);
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -343,10 +345,25 @@ class _MarketPageState extends State<_MarketPage> {
   void dispose() { search.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Column(children: [
-    Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+    Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Row(children: [
       Expanded(child: TextField(controller: search, textInputAction: TextInputAction.search, onSubmitted: (_) => load(), decoration: const InputDecoration(hintText: 'نام کالا یا برند...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()))),
       const SizedBox(width: 8), IconButton.filled(onPressed: loading ? null : load, icon: const Icon(Icons.search)),
     ])),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: DropdownButtonFormField<String>(
+      value: currencyFilter,
+      decoration: const InputDecoration(labelText: 'مقایسه قیمت بر اساس ارز', border: OutlineInputBorder(), isDense: true),
+      items: const [
+        DropdownMenuItem(value: '', child: Text('همه ارزها (بدون رتبه‌بندی قیمت)')),
+        DropdownMenuItem(value: 'IRR', child: Text('ریال ایران (IRR)')),
+        DropdownMenuItem(value: 'USD', child: Text('دلار (USD)')),
+        DropdownMenuItem(value: 'EUR', child: Text('یورو (EUR)')),
+        DropdownMenuItem(value: 'GBP', child: Text('پوند (GBP)')),
+        DropdownMenuItem(value: 'TRY', child: Text('لیر ترکیه (TRY)')),
+        DropdownMenuItem(value: 'AED', child: Text('درهم (AED)')),
+      ],
+      onChanged: (value) { setState(() => currencyFilter = value ?? ''); load(); },
+    )),
+    if (currencyFilter.isNotEmpty) const Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6), child: Text('ارزان‌ترین فروشنده در این ارز در ابتدای فهرست نمایش داده می‌شود.', style: TextStyle(color: Color(0xFFE8B85B)))),
     if (message.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), child: Text(message, style: const TextStyle(color: Color(0xFFE8B85B)))),
     if (loading) const LinearProgressIndicator(),
     Expanded(child: RefreshIndicator(onRefresh: load, child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: products.length,
