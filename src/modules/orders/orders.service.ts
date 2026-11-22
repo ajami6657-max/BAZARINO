@@ -49,7 +49,7 @@ export class OrdersService {
       throw new BadRequestException('Cart contains an unavailable product. Remove it and try again.');
     }
     const orders = await this.prisma.$transaction(async (tx) => {
-      const created = [];
+      const created: Array<Record<string, unknown>> = [];
       for (const item of cart.items) {
         const subtotal = item.listing.price.mul(item.quantity);
         const fee = this.commission.calculate(subtotal, item.listing.currency);
