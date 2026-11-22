@@ -6,6 +6,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { StoresModule } from './modules/stores/stores.module';
+import { ListingsModule } from './modules/listings/listings.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     PaymentsModule,
     StoresModule,
+    ListingsModule,
   ],
 })
 export class AppModule {}
