@@ -1,0 +1,31 @@
+import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { AuthTokenGuard } from '../stores/auth-token.guard';
+import { AdminGuard } from './admin.guard';
+import { AdminService } from './admin.service';
+
+type RequestWithUser = { user: { id: string; role: string } };
+
+@Controller('admin')
+@UseGuards(AuthTokenGuard, AdminGuard)
+export class AdminController {
+  constructor(private readonly admin: AdminService) {}
+
+  @Get('dashboard') dashboard() { return this.admin.dashboard(); }
+  @Get('users') users() { return this.admin.users(); }
+  @Get('stores') stores() { return this.admin.stores(); }
+  @Get('listings') listings() { return this.admin.listings(); }
+  @Get('orders') orders() { return this.admin.orders(); }
+
+  @Patch('users/:id/status')
+  setUserStatus(@Param('id') id: string, @Body() body: { status: string }, @Req() request: RequestWithUser) {
+    if (id === request.user.id && body.status !== 'ACTIVE') {
+      return this.admin.setUserStatus(id, 'ACTIVE').then(() => { throw new Error('Administrators cannot suspend their own account'); });
+    }
+    return this.admin.setUserStatus(id, body.status);
+  }
+
+  @Patch('listings/:id/status')
+  setListingStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.admin.setListingStatus(id, body.status);
+  }
+}
