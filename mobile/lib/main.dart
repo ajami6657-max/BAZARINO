@@ -432,7 +432,7 @@ class _CartPageState extends State<_CartPage> {
 }
 
 class _SellerPage extends StatefulWidget {
-  const _SellerPage();
+  const _SellerPage({super.key});
   @override
   State<_SellerPage> createState() => _SellerPageState();
 }
