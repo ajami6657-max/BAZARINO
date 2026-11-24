@@ -15,6 +15,7 @@ export class AdminController {
   @Get('stores') stores() { return this.admin.stores(); }
   @Get('listings') listings() { return this.admin.listings(); }
   @Get('orders') orders() { return this.admin.orders(); }
+  @Get('finance') finance() { return this.admin.finance(); }
 
   @Patch('users/:id/status')
   setUserStatus(@Param('id') id: string, @Body() body: { status: string }, @Req() request: RequestWithUser) {
