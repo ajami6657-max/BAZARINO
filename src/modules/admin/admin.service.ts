@@ -18,6 +18,24 @@ export class AdminService {
   }
 
 
+  async classifiedAdPlans() {
+    const [active, expired, byPlan] = await Promise.all([
+      this.prisma.classifiedAd.count({ where: { status: 'ACTIVE', expiresAt: { gt: new Date() } } }),
+      this.prisma.classifiedAd.count({ where: { expiresAt: { lte: new Date() } } }),
+      this.prisma.classifiedAd.groupBy({
+        by: ['planCode', 'planDurationDays', 'planPriceToman'],
+        _count: { _all: true },
+      }),
+    ]);
+    return {
+      active, expired,
+      plans: byPlan.map((row) => ({
+        code: row.planCode, durationDays: row.planDurationDays,
+        priceToman: row.planPriceToman, adCount: row._count._all,
+      })),
+    };
+  }
+
   async finance() {
     const [paidPayments, pendingPayouts] = await Promise.all([
       this.prisma.payment.groupBy({
