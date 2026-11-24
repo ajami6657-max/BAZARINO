@@ -1,9 +1,13 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsNumber, IsOptional, IsString, Length, Matches, MaxLength, Min, IsUrl } from 'class-validator';
 
 const TYPES = ['GOODS', 'VEHICLE', 'REAL_ESTATE', 'SERVICES', 'JOBS'];
+const PLAN_CODES = ['P1', 'P2', 'P3', 'P4', 'P5'];
 const CURRENCIES = ['IRR', 'USD', 'EUR', 'GBP', 'TRY', 'AED', 'SAR'];
 
 export class CreateClassifiedAdDto {
+  @IsString() @IsIn(PLAN_CODES)
+  planCode!: string;
+
   @IsString() @Length(3, 120)
   title!: string;
 
