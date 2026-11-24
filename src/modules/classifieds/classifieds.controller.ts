@@ -9,6 +9,9 @@ type AuthenticatedRequest = { user: { id: string; role: string } };
 export class ClassifiedsController {
   constructor(private readonly classifieds: ClassifiedsService) {}
 
+  @Get('plans')
+  plans() { return this.classifieds.plans(); }
+
   @Get()
   search(
     @Query('q') q?: string,
