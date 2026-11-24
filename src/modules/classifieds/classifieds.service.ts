@@ -3,13 +3,28 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateClassifiedAdDto } from './dto/create-classified-ad.dto';
 
 @Injectable()
+const AD_PLANS = {
+  P1: { durationDays: 30, priceToman: 50000 },
+  P2: { durationDays: 60, priceToman: 150000 },
+  P3: { durationDays: 90, priceToman: 225000 },
+  P4: { durationDays: 120, priceToman: 300000 },
+  P5: { durationDays: 150, priceToman: 380000 },
+} as const;
+
 export class ClassifiedsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  plans() {
+    return Object.entries(AD_PLANS).map(([code, plan]) => ({
+      code, ...plan, currency: 'IRR', currencyLabel: 'تومان',
+    }));
+  }
 
   async search(q?: string, city?: string, category?: string, adType?: string, countryCode?: string) {
     return this.prisma.classifiedAd.findMany({
       where: {
         status: 'ACTIVE',
+        expiresAt: { gt: new Date() },
         ...(city ? { city: { contains: city, mode: 'insensitive' as const } } : {}),
         ...(category ? { category: { equals: category, mode: 'insensitive' as const } } : {}),
         ...(adType ? { adType: adType as any } : {}),
@@ -26,6 +41,10 @@ export class ClassifiedsService {
   }
 
   async create(ownerId: string, dto: CreateClassifiedAdDto) {
+    const plan = AD_PLANS[dto.planCode as keyof typeof AD_PLANS];
+    if (!plan) throw new ForbiddenException('Select a valid ad duration plan');
+    const publishedAt = new Date();
+    const expiresAt = new Date(publishedAt.getTime() + plan.durationDays * 86400000);
     const isFree = dto.isFree ?? false;
     if (!isFree && dto.price === undefined) {
       throw new ForbiddenException('Enter a price or mark this ad as free');
@@ -47,6 +66,11 @@ export class ClassifiedsService {
         area: dto.area?.trim(),
         images: dto.images ?? [],
         status: 'ACTIVE',
+        planCode: dto.planCode,
+        planDurationDays: plan.durationDays,
+        planPriceToman: plan.priceToman,
+        publishedAt,
+        expiresAt,
       },
       include: { owner: { select: { id: true, displayName: true } } },
     });
