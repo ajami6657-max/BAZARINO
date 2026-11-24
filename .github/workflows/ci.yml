@@ -21,7 +21,7 @@ jobs:
       - run: npm run build
 
   flutter:
-    name: Flutter mobile analysis
+    name: Flutter Android build and analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,3 +34,16 @@ jobs:
       - name: Analyze Flutter app
         working-directory: mobile
         run: flutter analyze --no-fatal-infos
+      - name: Generate Android platform files
+        working-directory: mobile
+        run: flutter create --platforms=android --org com.ajami .
+      - name: Build release APK
+        working-directory: mobile
+        run: flutter build apk --release
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazarino-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
