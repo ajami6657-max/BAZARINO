@@ -17,6 +17,43 @@ export class AdminService {
     return { users, sellers, stores, listings, activeListings, orders, paidOrders, payments, paidPayments, pendingPayouts };
   }
 
+
+  async finance() {
+    const [paidPayments, pendingPayouts] = await Promise.all([
+      this.prisma.payment.groupBy({
+        by: ['currency', 'commissionBps'],
+        where: { status: 'PAID' },
+        _sum: { grossAmount: true, platformFee: true, sellerNet: true },
+        _count: { _all: true },
+      }),
+      this.prisma.sellerPayout.groupBy({
+        by: ['currency', 'status'],
+        where: { status: { in: ['PENDING', 'PROCESSING', 'FAILED'] } },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    return {
+      commissionPolicy: { rateBps: 50, ratePercent: '0.5%', basis: 'paid payment amount' },
+      paidPayments: paidPayments.map((row) => ({
+        currency: row.currency,
+        commissionBps: row.commissionBps,
+        paymentCount: row._count._all,
+        grossAmount: row._sum.grossAmount?.toString() ?? '0',
+        platformRevenue: row._sum.platformFee?.toString() ?? '0',
+        sellerNet: row._sum.sellerNet?.toString() ?? '0',
+      })),
+      payouts: pendingPayouts.map((row) => ({
+        currency: row.currency,
+        status: row.status,
+        payoutCount: row._count._all,
+        amount: row._sum.amount?.toString() ?? '0',
+      })),
+      note: 'Only provider-confirmed PAID payments are included. This report does not initiate payouts.',
+    };
+  }
+
   users() {
     return this.prisma.user.findMany({
       take: 100, orderBy: { createdAt: 'desc' },
