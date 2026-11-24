@@ -237,6 +237,11 @@ model ClassifiedAd {
   area         String?
   images       String[] @default([])
   status       ClassifiedAdStatus @default(ACTIVE)
+  planCode     String @default("P1")
+  planDurationDays Int @default(30)
+  planPriceToman Int @default(50000)
+  publishedAt  DateTime @default(now())
+  expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   owner        User @relation(fields: [ownerId], references: [id])
