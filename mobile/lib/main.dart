@@ -629,6 +629,7 @@ class _ClassifiedsPageState extends State<_ClassifiedsPage> {
   bool loading = false;
   bool posting = false;
   bool isFree = false;
+  String selectedPlan = 'P1';
   String message = 'آگهی‌های نزدیک خود را جست‌وجو کنید.';
 
   @override
@@ -667,7 +668,7 @@ class _ClassifiedsPageState extends State<_ClassifiedsPage> {
         body: jsonEncode({
           'title': title.text.trim(), 'description': description.text.trim(),
           'category': category.text.trim(), 'city': city.text.trim(),
-          'countryCode': 'IR', 'currency': 'IRR', 'isFree': isFree,
+          'countryCode': 'IR', 'currency': 'IRR', 'isFree': isFree,\n          'planCode': selectedPlan,
           if (!isFree) 'price': amount,
           'isNegotiable': true, 'adType': 'GOODS',
         })).timeout(const Duration(seconds: 15));
@@ -703,12 +704,25 @@ class _ClassifiedsPageState extends State<_ClassifiedsPage> {
       _field(city, 'شهر (مثلاً بیرجند)'),
       FilledButton.icon(onPressed: loading ? null : load, icon: const Icon(Icons.search), label: const Text('جست‌وجو')),
       const Divider(height: 28),
-      const Text('ثبت آگهی رایگان', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      const Text('ثبت آگهی و انتخاب مدت انتشار', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
       const SizedBox(height: 10),
       _field(title, 'عنوان آگهی'),
       _field(description, 'توضیحات کامل', lines: 3),
       _field(category, 'دسته‌بندی'),
-      _field(price, 'قیمت به ریال', type: const TextInputType.numberWithOptions(decimal: true)),
+      DropdownButtonFormField<String>(
+        value: selectedPlan,
+        decoration: const InputDecoration(labelText: 'مدت و هزینه انتشار آگهی', border: OutlineInputBorder()),
+        items: const [
+          DropdownMenuItem(value: 'P1', child: Text('پلن ۱ • ۳۰ روز • ۵۰٬۰۰۰ تومان')),
+          DropdownMenuItem(value: 'P2', child: Text('پلن ۲ • ۶۰ روز • ۱۵۰٬۰۰۰ تومان')),
+          DropdownMenuItem(value: 'P3', child: Text('پلن ۳ • ۹۰ روز • ۲۲۵٬۰۰۰ تومان')),
+          DropdownMenuItem(value: 'P4', child: Text('پلن ۴ • ۱۲۰ روز • ۳۰۰٬۰۰۰ تومان')),
+          DropdownMenuItem(value: 'P5', child: Text('پلن ۵ • ۱۵۰ روز • ۳۸۰٬۰۰۰ تومان')),
+        ],
+        onChanged: posting ? null : (value) { if (value != null) setState(() => selectedPlan = value); },
+      ),
+      const SizedBox(height: 10),
+      _field(price, 'قیمت کالا به ریال', type: const TextInputType.numberWithOptions(decimal: true)),
       SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('این مورد رایگان است'), value: isFree, onChanged: (v) => setState(() => isFree = v)),
       FilledButton(onPressed: posting ? null : createAd, child: posting ? const CircularProgressIndicator() : const Text('ثبت آگهی')),
       if (message.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text(message, style: const TextStyle(color: Color(0xFFE8B85B)))),
@@ -722,7 +736,7 @@ class _ClassifiedsPageState extends State<_ClassifiedsPage> {
         return Card(color: const Color(0xFF10233D), child: ListTile(
           leading: const Icon(Icons.campaign_outlined, color: Color(0xFFE8B85B)),
           title: Text(ad['title']?.toString() ?? 'آگهی'),
-          subtitle: Text(priceText + ' • ' + (ad['city']?.toString() ?? '') + ' • ' + (ad['category']?.toString() ?? '') + '\\n' + (owner['displayName']?.toString() ?? 'کاربر بازارینو')),
+          subtitle: Text(priceText + ' • ' + (ad['city']?.toString() ?? '') + ' • ' + (ad['category']?.toString() ?? '') + ' • ' + (ad['planDurationDays']?.toString() ?? '30') + ' روزه' + '\\n' + (owner['displayName']?.toString() ?? 'کاربر بازارینو')),
           isThreeLine: true,
         ));
       }),
