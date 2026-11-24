@@ -16,6 +16,7 @@ export class AdminController {
   @Get('listings') listings() { return this.admin.listings(); }
   @Get('orders') orders() { return this.admin.orders(); }
   @Get('finance') finance() { return this.admin.finance(); }
+  @Get('classified-ad-plans') classifiedAdPlans() { return this.admin.classifiedAdPlans(); }
 
   @Patch('users/:id/status')
   setUserStatus(@Param('id') id: string, @Body() body: { status: string }, @Req() request: RequestWithUser) {
