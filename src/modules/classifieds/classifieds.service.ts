@@ -11,6 +11,7 @@ const AD_PLANS = {
   P5: { durationDays: 150, priceToman: 380000 },
 } as const;
 
+@Injectable()
 export class ClassifiedsService {
   constructor(private readonly prisma: PrismaService) {}
 
