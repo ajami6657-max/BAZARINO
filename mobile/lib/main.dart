@@ -668,7 +668,8 @@ class _ClassifiedsPageState extends State<_ClassifiedsPage> {
         body: jsonEncode({
           'title': title.text.trim(), 'description': description.text.trim(),
           'category': category.text.trim(), 'city': city.text.trim(),
-          'countryCode': 'IR', 'currency': 'IRR', 'isFree': isFree,\n          'planCode': selectedPlan,
+          'countryCode': 'IR', 'currency': 'IRR', 'isFree': isFree,
+          'planCode': selectedPlan,
           if (!isFree) 'price': amount,
           'isNegotiable': true, 'adType': 'GOODS',
         })).timeout(const Duration(seconds: 15));
