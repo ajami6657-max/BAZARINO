@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateClassifiedAdDto } from './dto/create-classified-ad.dto';
 
-@Injectable()
 const AD_PLANS = {
   P1: { durationDays: 30, priceToman: 50000 },
   P2: { durationDays: 60, priceToman: 150000 },
